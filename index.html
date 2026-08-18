@@ -26,7 +26,92 @@ canvas{display:block;width:100%;background:#fff;border-radius:10px}.network{heig
 <div class="wrap">
 <div class="header">
 <h1>Collective Trauma — Adaptive Network Simulator</h1>
-<div class="sub">Coupled individuals • social buffering • cumulative load • adaptive bonds • network breakdown</div>
+<div class="sub">A community is represented as a network of N interacting individuals.
+
+Each individual i is represented by a dynamical state variable x
+i
+	​
+
+(t), describing deviation from a baseline state.
+
+A minimal second-order model is:
+
+x
+¨
+i
+	​
+
++2γ
+i
+	​
+
+x
+˙
+i
+	​
+
++ω
+i
+2
+	​
+
+x
+i
+	​
+
+=T
+i
+	​
+
+(t)+
+j=1
+∑
+N
+	​
+
+K
+ij
+	​
+
+(t)(x
+j
+	​
+
+−x
+i
+	​
+
+).
+
+Here:
+
+x
+i
+	​
+
+(t) represents the individual's deviation from baseline;
+ω
+i
+	​
+
+ represents an individual's characteristic recovery/dynamical timescale;
+γ
+i
+	​
+
+ represents intrinsic damping or recovery;
+T
+i
+	​
+
+(t) represents an external traumatic perturbation;
+K
+ij
+	​
+
+(t) represents the strength of the interpersonal coupling between individuals i and j.
+
+The model is intentionally phenomenological. The term “oscillator” does not imply that psychological trauma is literally a mechanical vibration. Rather, the oscillator formalism provides a mathematical representation of systems that can be perturbed, interact, dissipate energy, and return toward—or fail to return toward—a baseline state</div>
 </div>
 
 <div class="grid">
@@ -48,7 +133,7 @@ canvas{display:block;width:100%;background:#fff;border-radius:10px}.network{heig
 </div>
 
 <div class="status" id="status">Network intact</div>
-<div class="note">Phenomenological model: “trauma” is a perturbation of a dynamical state, not a claim that psychological trauma is literally mechanical vibration.</div>
+
 <div class="formula">ẍᵢ + 2γẋᵢ + ω²xᵢ = Tᵢ(t) + ΣKᵢⱼ(xⱼ−xᵢ)<br><br>Kᵢⱼ = Kmax · qᵢⱼ<br>q̇ᵢⱼ = recovery − damage·(xᵢ−xⱼ)²</div>
 </aside>
 
