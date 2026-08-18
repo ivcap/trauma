@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Collective Trauma — Adaptive Network Simulator</title>
+<style>
+:root{--bg:#f4f4f1;--card:#fff;--ink:#202124;--muted:#6b6b6b;--line:#d8d8d2}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:1250px;margin:auto;padding:22px}.header{margin-bottom:18px}
+h1{margin:0 0 5px;font-size:30px;letter-spacing:-.02em}.sub{color:var(--muted)}
+.grid{display:grid;grid-template-columns:315px 1fr;gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px;box-shadow:0 2px 12px #00000009}
+h2,h3{margin:0 0 12px}h3{font-size:16px}
+.control{margin:13px 0}.control label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
+input[type=range]{width:100%}.buttons{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
+button{border:1px solid #aaa;background:#fff;color:#222;border-radius:9px;padding:8px 10px;cursor:pointer}
+button:hover{background:#f0f0ed}button.primary{background:#222;color:#fff;border-color:#222}
+canvas{display:block;width:100%;background:#fff;border-radius:10px}.network{height:430px}.chart{height:250px;margin-top:14px}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}.metric{background:#f7f7f4;border-radius:9px;padding:9px;font-size:12px;color:#666}.metric b{display:block;font-size:19px;color:#222;margin-top:2px}
+.note{font-size:12px;line-height:1.45;color:#666;margin-top:14px}.status{margin-top:10px;padding:9px;border-radius:8px;background:#f7f7f4;font-size:12px}
+.legend{font-size:12px;color:#777;margin-top:7px}.formula{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.6;background:#f7f7f4;padding:10px;border-radius:8px}
+@media(max-width:850px){.grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="header">
+<h1>Collective Trauma — Adaptive Network Simulator</h1>
+<div class="sub">Coupled individuals • social buffering • cumulative load • adaptive bonds • network breakdown</div>
+</div>
+
+<div class="grid">
+<aside class="card">
+<h3>Model parameters</h3>
+
+<div class="control"><label>People <span id="nV"></span></label><input id="n" type="range" min="5" max="10" step="1" value="7"></div>
+<div class="control"><label>Initial coupling K <span id="kV"></span></label><input id="k" type="range" min="0" max="2" step=".01" value=".85"></div>
+<div class="control"><label>Intrinsic damping γ <span id="gV"></span></label><input id="gamma" type="range" min=".02" max="1.2" step=".01" value=".18"></div>
+<div class="control"><label>Trauma impulse <span id="aV"></span></label><input id="amp" type="range" min="0" max="20" step=".1" value="8"></div>
+<div class="control"><label>Trauma interval <span id="iV"></span></label><input id="interval" type="range" min=".5" max="12" step=".1" value="4"></div>
+<div class="control"><label>Bond recovery <span id="rV"></span></label><input id="recovery" type="range" min="0" max=".25" step=".005" value=".045"></div>
+<div class="control"><label>Bond damage <span id="dV"></span></label><input id="damage" type="range" min="0" max=".15" step=".002" value=".035"></div>
+<div class="control"><label>Break threshold <span id="bV"></span></label><input id="break" type="range" min=".03" max="1.5" step=".01" value=".32"></div>
+
+<div class="buttons">
+<button class="primary" id="start">Start</button><button id="pause">Pause</button><button id="reset">Reset</button>
+<button id="one">Traumatize 1</button><button id="three">Traumatize 3</button>
+</div>
+
+<div class="status" id="status">Network intact</div>
+<div class="note">Phenomenological model: “trauma” is a perturbation of a dynamical state, not a claim that psychological trauma is literally mechanical vibration.</div>
+<div class="formula">ẍᵢ + 2γẋᵢ + ω²xᵢ = Tᵢ(t) + ΣKᵢⱼ(xⱼ−xᵢ)<br><br>Kᵢⱼ = Kmax · qᵢⱼ<br>q̇ᵢⱼ = recovery − damage·(xᵢ−xⱼ)²</div>
+</aside>
+
+<main>
+<div class="card">
+<canvas id="network" class="network" width="920" height="430"></canvas>
+<div class="legend">Node radius ≈ activation | edge thickness ≈ connection strength | dashed edge = weak bond</div>
+<div class="metrics">
+<div class="metric">Collective load<b id="load">0.00</b></div>
+<div class="metric">Mean coupling<b id="meanK">0.00</b></div>
+<div class="metric">Broken bonds<b id="broken">0</b></div>
+<div class="metric">Time<b id="time">0.0</b></div>
+</div>
+</div>
+<div class="card"><canvas id="chart" class="chart" width="920" height="250"></canvas></div>
+</main>
+</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const ids=["n","k","gamma","amp","interval","recovery","damage","break"];
+const labels={n:"nV",k:"kV",gamma:"gV",amp:"aV",interval:"iV",recovery:"rV",damage:"dV",break:"bV"};
+ids.forEach(id=>$(id).addEventListener("input",()=>{ $(labels[id]).textContent=$(id).value;if(id==="n")reset(); }));
+ids.forEach(id=>$(labels[id]).textContent=$(id).value);
+
+const nc=$("network"),ctx=nc.getContext("2d"),cc=$("chart"),cctx=cc.getContext("2d");
+let N,x,v,K,pos,t,running=false,nextTrauma,history=[],last=0;
+
+function reset(){
+ running=false;N=+$("n").value;x=Array(N).fill(0);v=Array(N).fill(0);
+ K=Array.from({length:N},()=>Array(N).fill(0));
+ const k=+$("k").value;
+ for(let i=0;i<N;i++){let j=(i+1)%N;K[i][j]=K[j][i]=k}
+ for(let i=0;i<N;i++){let j=(i+2)%N;if(i<j&&Math.random()<.55)K[i][j]=K[j][i]=k*.55}
+ pos=Array.from({length:N},(_,i)=>{let a=-Math.PI/2+i*2*Math.PI/N;return{x:nc.width/2+155*Math.cos(a),y:nc.height/2+145*Math.sin(a)}});
+ t=0;nextTrauma=+$("interval").value;history=[];draw();
+}
+function impulse(list){let a=+$("amp").value;list.forEach(i=>{if(i<N)v[i]+=a})}
+$("one").onclick=()=>impulse([0]);
+$("three").onclick=()=>impulse([0,1,2]);
+$("reset").onclick=reset;$("pause").onclick=()=>running=false;
+$("start").onclick=()=>{if(!running){running=true;last=performance.now();requestAnimationFrame(loop)}};
+
+function step(dt){
+ const gamma=+$("gamma").value,damage=+$("damage").value,recovery=+$("recovery").value,br=+$("break").value,target=+$("k").value;
+ let a=Array(N).fill(0);
+ for(let i=0;i<N;i++){let coup=0;for(let j=0;j<N;j++)coup+=K[i][j]*(x[j]-x[i]);a[i]=-2*gamma*v[i]-x[i]+coup}
+ for(let i=0;i<N;i++){v[i]+=a[i]*dt;x[i]+=v[i]*dt}
+ for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){
+   if(K[i][j]<=0)continue;
+   let stress=(x[i]-x[j])**2;
+   K[i][j]=K[j][i]=Math.max(0,K[i][j]+(recovery*(target-K[i][j])-damage*stress)*dt);
+   if(Math.abs(x[i]-x[j])>br&&K[i][j]<target*.18)K[i][j]=K[j][i]=0;
+ }
+ t+=dt;
+ if(t>=nextTrauma){impulse([0]);nextTrauma+=+$("interval").value}
+}
+function draw(){
+ ctx.clearRect(0,0,nc.width,nc.height);
+ for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){let k=K[i][j];if(k<=0)continue;let p=pos[i],q=pos[j];
+   ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.lineWidth=Math.max(1,Math.min(8,k*5));
+   ctx.globalAlpha=Math.min(.9,.18+k*.5);ctx.setLineDash(k<+$("k").value*.35?[7,6]:[]);ctx.strokeStyle="#777";ctx.stroke();
+ }
+ ctx.setLineDash([]);ctx.globalAlpha=1;
+ for(let i=0;i<N;i++){let p=pos[i],r=12+Math.min(28,Math.abs(x[i])*8);
+   ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.lineWidth=3;ctx.strokeStyle="#222";ctx.stroke();
+   ctx.fillStyle="#222";ctx.font="bold 14px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(i+1,p.x,p.y);
+ }
+ let load=x.reduce((s,z)=>s+z*z,0)/N,sum=0,cnt=0,broken=0;
+ for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){if(K[i][j]>0){sum+=K[i][j];cnt++}else broken++}
+ let mean=cnt?sum/cnt:0;
+ $("load").textContent=load.toFixed(2);$("meanK").textContent=mean.toFixed(2);$("broken").textContent=broken;$("time").textContent=t.toFixed(1);
+ $("status").textContent=broken===0?"Network intact":broken<N-1?"Network weakening / fragmented":"Network largely disconnected";
+ history.push({t,load});if(history.length>900)history.shift();drawChart();
+}
+function drawChart(){
+ cctx.clearRect(0,0,cc.width,cc.height);if(history.length<2)return;
+ const maxL=Math.max(1,...history.map(h=>h.load)),maxT=Math.max(10,history.at(-1).t);
+ cctx.strokeStyle="#e0e0dc";for(let y=30;y<cc.height;y+=45){cctx.beginPath();cctx.moveTo(45,y);cctx.lineTo(cc.width-15,y);cctx.stroke()}
+ cctx.beginPath();history.forEach((h,i)=>{let px=45+h.t/maxT*(cc.width-60),py=cc.height-25-h.load/maxL*(cc.height-55);i?cctx.lineTo(px,py):cctx.moveTo(px,py)});
+ cctx.strokeStyle="#222";cctx.lineWidth=2;cctx.stroke();cctx.fillStyle="#666";cctx.font="12px system-ui";cctx.fillText("collective load",8,17);cctx.fillText("time",cc.width-45,cc.height-7);
+}
+function loop(now){if(!running)return;let dt=Math.min(.03,(now-last)/1000);last=now;for(let s=0;s<2;s++)step(dt/2);draw();requestAnimationFrame(loop)}
+reset();
+</script>
+</body>
+</html>
