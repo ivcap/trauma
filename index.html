@@ -27,62 +27,11 @@ canvas{display:block;width:100%;background:#fff;border-radius:10px}.network{heig
 <div class="header">
 <h1>Collective Trauma — Adaptive Network Simulator</h1>
 <div class="sub">A community is represented as a network of N interacting individuals.
-
 Each individual i is represented by a dynamical state variable x
-i
-	​
-
-(t), describing deviation from a baseline state.
-
-A minimal second-order model is:
-
-x
-¨
-i
-	​
-
-+2γ
-i
-	​
-
-x
-˙
-i
-	​
-
-+ω
-i
-2
-	​
-
-x
-i
-	​
-
-=T
-i
-	​
-
-(t)+
-j=1
-∑
-N
-	​
-
-K
-ij
-	​
-
-(t)(x
-j
-	​
-
-−x
-i
-	​
-
-).
-
+i (t), describing deviation from a baseline state.
+<br>
+A minimal second-order model is: ẍᵢ + 2γẋᵢ + ω²xᵢ = Tᵢ(t) + ΣKᵢⱼ(xⱼ−xᵢ)
+<br>
 Here:
 
 x
