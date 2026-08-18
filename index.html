@@ -33,7 +33,7 @@ canvas{display:block;width:100%;background:#fff;border-radius:10px}.network{heig
 <aside class="card">
 <h3>Model parameters</h3>
 
-<div class="control"><label>People <span id="nV"></span></label><input id="n" type="range" min="5" max="10" step="1" value="7"></div>
+<div class="control"><label>People <span id="nV"></span></label><input id="n" type="range" min="10" max="200" step="1" value="100"></div>
 <div class="control"><label>Initial coupling K <span id="kV"></span></label><input id="k" type="range" min="0" max="2" step=".01" value=".85"></div>
 <div class="control"><label>Intrinsic damping γ <span id="gV"></span></label><input id="gamma" type="range" min=".02" max="1.2" step=".01" value=".18"></div>
 <div class="control"><label>Trauma impulse <span id="aV"></span></label><input id="amp" type="range" min="0" max="20" step=".1" value="8"></div>
@@ -82,9 +82,30 @@ function reset(){
  running=false;N=+$("n").value;x=Array(N).fill(0);v=Array(N).fill(0);
  K=Array.from({length:N},()=>Array(N).fill(0));
  const k=+$("k").value;
- for(let i=0;i<N;i++){let j=(i+1)%N;K[i][j]=K[j][i]=k}
- for(let i=0;i<N;i++){let j=(i+2)%N;if(i<j&&Math.random()<.55)K[i][j]=K[j][i]=k*.55}
- pos=Array.from({length:N},(_,i)=>{let a=-Math.PI/2+i*2*Math.PI/N;return{x:nc.width/2+155*Math.cos(a),y:nc.height/2+145*Math.sin(a)}});
+ // Connected sparse network: ring backbone + local shortcuts.
+ for(let i=0;i<N;i++){
+   let j=(i+1)%N;
+   K[i][j]=K[j][i]=k;
+ }
+ const shortcutProb = Math.min(0.10, 8/N);
+ for(let i=0;i<N;i++){
+   for(let d=2;d<=4;d++){
+     let j=(i+d)%N;
+     if(i<j && Math.random()<shortcutProb) K[i][j]=K[j][i]=k*.55;
+   }
+ }
+ pos=Array.from({length:N},(_,i)=>{
+   const cx=nc.width/2, cy=nc.height/2;
+   const perRing=Math.max(12, Math.ceil(Math.sqrt(N*2)));
+   const ring=Math.floor(i/perRing), count=Math.min(perRing,N-ring*perRing);
+   const radius=55+ring*38;
+   const a=-Math.PI/2+(i%perRing)*2*Math.PI/count;
+   return {x:cx+radius*Math.cos(a),y:cy+radius*Math.sin(a)};
+ });
+ // Scale all rings to fit the canvas.
+ const maxR=55+(Math.ceil(N/Math.max(12,Math.ceil(Math.sqrt(N*2))))-1)*38;
+ const scale=Math.min(1,(Math.min(nc.width,nc.height)*.46)/maxR);
+ pos=pos.map(p=>({x:nc.width/2+(p.x-nc.width/2)*scale,y:nc.height/2+(p.y-nc.height/2)*scale}));
  t=0;nextTrauma=+$("interval").value;history=[];draw();
 }
 function impulse(list){let a=+$("amp").value;list.forEach(i=>{if(i<N)v[i]+=a})}
@@ -110,13 +131,13 @@ function step(dt){
 function draw(){
  ctx.clearRect(0,0,nc.width,nc.height);
  for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){let k=K[i][j];if(k<=0)continue;let p=pos[i],q=pos[j];
-   ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.lineWidth=Math.max(1,Math.min(8,k*5));
-   ctx.globalAlpha=Math.min(.9,.18+k*.5);ctx.setLineDash(k<+$("k").value*.35?[7,6]:[]);ctx.strokeStyle="#777";ctx.stroke();
+   ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.lineWidth=Math.max(.35,Math.min(N>80?2.5:8,k*(N>80?2.2:5)));
+   ctx.globalAlpha=Math.min(N>80?.38:.9,.10+k*(N>80?.28:.5));ctx.setLineDash(k<+$("k").value*.35?[7,6]:[]);ctx.strokeStyle="#777";ctx.stroke();
  }
  ctx.setLineDash([]);ctx.globalAlpha=1;
- for(let i=0;i<N;i++){let p=pos[i],r=12+Math.min(28,Math.abs(x[i])*8);
+ for(let i=0;i<N;i++){let p=pos[i], base=N>80?5.5:N>40?7:10, r=base+Math.min(N>80?7:18,Math.abs(x[i])*(N>80?2.5:6));
    ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.lineWidth=3;ctx.strokeStyle="#222";ctx.stroke();
-   ctx.fillStyle="#222";ctx.font="bold 14px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(i+1,p.x,p.y);
+   ctx.fillStyle="#222";ctx.font=(N>80?"bold 8px":"bold 14px")+" system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(i+1,p.x,p.y);
  }
  let load=x.reduce((s,z)=>s+z*z,0)/N,sum=0,cnt=0,broken=0;
  for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){if(K[i][j]>0){sum+=K[i][j];cnt++}else broken++}
@@ -137,3 +158,4 @@ reset();
 </script>
 </body>
 </html>
+
